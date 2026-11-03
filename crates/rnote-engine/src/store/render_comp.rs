@@ -7,7 +7,9 @@ use crate::strokes::Content;
 use crate::strokes::content::GeneratedContentImages;
 use p2d::bounding_volume::{Aabb, BoundingVolume};
 use rnote_compose::ext::AabbExt;
+#[cfg(feature = "ui")]
 use rnote_compose::shapes::Shapeable;
+use std::collections::HashSet;
 use tracing::error;
 
 /// The tolerance where check between scale-factors are considered "equal".
@@ -247,27 +249,32 @@ impl StrokeStore {
         viewport: Aabb,
         image_scale: f64,
     ) {
-        let keys = self.render_components.keys().collect::<Vec<StrokeKey>>();
+        let viewport_extended =
+            viewport.extend_by(viewport.extents() * VIEWPORT_EXTENTS_MARGIN_FACTOR);
+        // Query the rtree instead of computing the bounds of every stroke, which walks every path
+        // segment of the document and is far too slow to do on every scroll or zoom event.
+        let visible_keys = self.key_tree.keys_intersecting_bounds(viewport_extended);
+        let visible_set = visible_keys.iter().copied().collect::<HashSet<StrokeKey>>();
 
-        for key in keys {
+        // clear the image buffers of strokes that are not in the viewport
+        for (key, render_comp) in self.render_components.iter_mut() {
+            let holds_rendering =
+                render_comp.state != RenderCompState::Dirty || !render_comp.images.is_empty();
+            if holds_rendering && !visible_set.contains(&key) {
+                #[cfg(feature = "ui")]
+                {
+                    render_comp.rendernodes = vec![];
+                }
+                render_comp.images = vec![];
+                render_comp.state = RenderCompState::Dirty;
+            }
+        }
+
+        for key in visible_keys {
             if let Some(stroke) = self.stroke_components.get(key)
                 && let Some(render_comp) = self.render_components.get_mut(key)
             {
                 let tasks_tx = tasks_tx.clone();
-                let stroke_bounds = stroke.bounds();
-                let viewport_extended =
-                    viewport.extend_by(viewport.extents() * VIEWPORT_EXTENTS_MARGIN_FACTOR);
-
-                // skip and clear image buffer if stroke is not in viewport
-                if !viewport_extended.intersects(&stroke_bounds) {
-                    #[cfg(feature = "ui")]
-                    {
-                        render_comp.rendernodes = vec![];
-                    }
-                    render_comp.images = vec![];
-                    render_comp.state = RenderCompState::Dirty;
-                    continue;
-                }
 
                 // only check if rerendering is not forced
                 if !force_regenerate {
@@ -652,5 +659,60 @@ impl StrokeStore {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Engine;
+    use crate::strokes::{BrushStroke, Stroke};
+    use rnote_compose::penpath::{Element, PenPath, Segment};
+    use rnote_compose::style::Style;
+    use p2d::math::Vector2;
+    use std::time::Instant;
+
+    /// Builds a document resembling a dense handwritten notebook.
+    fn notebook_engine(pages: usize, strokes_per_page: usize, segments: usize) -> Engine {
+        let mut engine = Engine::default();
+        let page_height = 1123.0;
+        for page in 0..pages {
+            for i in 0..strokes_per_page {
+                let x = 40.0 + (i % 30) as f64 * 24.0;
+                let y = page as f64 * page_height + 40.0 + (i / 30) as f64 * 50.0;
+                let start = Element::new(Vector2::new(x, y), 0.5);
+                let segs = (1..=segments).map(|s| Segment::LineTo {
+                    end: Element::new(
+                        Vector2::new(x + s as f64 * 0.3, y + (s as f64 * 0.7).sin() * 6.0),
+                        0.5,
+                    ),
+                });
+                let path = PenPath::new_w_segments(start, segs);
+                let stroke = BrushStroke::from_penpath(path, Style::default());
+                engine.store.insert_stroke(Stroke::BrushStroke(stroke), None);
+            }
+        }
+        let _ = engine.camera.set_size(Vector2::new(1920.0, 1080.0));
+        engine
+    }
+
+    /// Cost of re-checking the viewport rendering when nothing changed, e.g. on every scroll
+    /// event. Run with `cargo test -p rnote-engine --release -- --ignored --nocapture viewport_regen`.
+    #[test]
+    #[ignore]
+    fn bench_viewport_regen_scan() {
+        let mut engine = notebook_engine(100, 600, 60);
+        // First call starts rendering the visible strokes.
+        let _ = engine.update_content_rendering_current_viewport();
+        let iterations = 50;
+        let start = Instant::now();
+        for _ in 0..iterations {
+            let _ = engine.update_content_rendering_current_viewport();
+        }
+        let per_call = start.elapsed() / iterations;
+        println!(
+            "viewport_regen_scan: {} strokes, {:?} per call",
+            engine.store.stroke_keys_unordered().len(),
+            per_call
+        );
     }
 }
