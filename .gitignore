@@ -10,3 +10,7 @@
 *.mo
 .toggletasks.json
 *.flatpak
+_mesonbuild/
+_install/
+result*
+.direnv/
