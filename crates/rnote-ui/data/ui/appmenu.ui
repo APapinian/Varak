@@ -39,6 +39,55 @@
             </item>
           </submenu>
           <submenu>
+            <attribute name="label" translatable="yes">_Theme</attribute>
+            <section>
+              <item>
+                <attribute name="label" translatable="yes">S_ystem (Adwaita)</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">system</attribute>
+              </item>
+            </section>
+            <section>
+              <item>
+                <attribute name="label" translatable="yes">_Violet (Desktop Palette)</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">violet</attribute>
+              </item>
+              <item>
+                <attribute name="label" translatable="yes">Violet _Light</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">violet-light</attribute>
+              </item>
+            </section>
+            <section>
+              <item>
+                <attribute name="label" translatable="yes">_Catppuccin Mocha</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">catppuccin-mocha</attribute>
+              </item>
+              <item>
+                <attribute name="label" translatable="yes">_Rosé Pine</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">rose-pine</attribute>
+              </item>
+              <item>
+                <attribute name="label" translatable="yes">_Nord</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">nord</attribute>
+              </item>
+              <item>
+                <attribute name="label" translatable="yes">_Gruvbox Dark</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">gruvbox-dark</attribute>
+              </item>
+              <item>
+                <attribute name="label" translatable="yes">_Paper</attribute>
+                <attribute name="action">app.theme</attribute>
+                <attribute name="target">paper</attribute>
+              </item>
+            </section>
+          </submenu>
+          <submenu>
             <attribute name="label" translatable="yes">Developer _Menu</attribute>
             <attribute name="action">win.devel-menu</attribute>
             <attribute name="hidden-when">action-disabled</attribute>

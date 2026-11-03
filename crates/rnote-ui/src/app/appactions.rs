@@ -1,7 +1,9 @@
 // Imports
 use crate::RnApp;
+use crate::theme::{self, Theme};
 use adw::prelude::*;
 use gtk4::{gio, glib, glib::clone};
+use tracing::error;
 
 impl RnApp {
     pub(crate) fn setup_actions(&self) {
@@ -29,14 +31,55 @@ impl RnApp {
                 }
             })
             .transform_from(move |_, val: adw::ColorScheme| match val {
-                adw::ColorScheme::Default => Some(String::from("default").to_value()),
-                adw::ColorScheme::ForceLight => Some(String::from("force-light").to_value()),
-                adw::ColorScheme::ForceDark => Some(String::from("force-dark").to_value()),
+                // the action state is a GVariant, not a plain string
+                adw::ColorScheme::Default => Some("default".to_variant().to_value()),
+                adw::ColorScheme::ForceLight => Some("force-light".to_variant().to_value()),
+                adw::ColorScheme::ForceDark => Some("force-dark".to_variant().to_value()),
                 _ => None,
             })
             .sync_create()
             .bidirectional()
             .build();
+
+        let action_theme = gio::SimpleAction::new_stateful(
+            "theme",
+            Some(&glib::VariantType::new("s").unwrap()),
+            &Theme::System.id().to_variant(),
+        );
+        self.add_action(&action_theme);
+
+        action_theme.connect_change_state(clone!(
+            #[weak(rename_to = app)]
+            self,
+            move |action, state| {
+                let Some(id) = state.and_then(|s| s.get::<String>()) else {
+                    return;
+                };
+                let Some(theme) = Theme::from_id(&id) else {
+                    error!("Unknown theme `{id}`");
+                    return;
+                };
+                let app_settings = app.app_settings();
+                // The color scheme to return to when switching to the system theme
+                let system_scheme = match app_settings
+                    .as_ref()
+                    .map(|s| s.string("color-scheme"))
+                    .as_deref()
+                {
+                    Some("force-light") => adw::ColorScheme::ForceLight,
+                    Some("force-dark") => adw::ColorScheme::ForceDark,
+                    _ => adw::ColorScheme::Default,
+                };
+                theme::apply(theme, system_scheme);
+                action.set_state(&id.to_variant());
+
+                if let Some(app_settings) = app_settings
+                    && let Err(e) = app_settings.set_string("theme", &id)
+                {
+                    error!("Failed to set setting `theme`, Err: {e:?}");
+                }
+            }
+        ));
 
         // Quit App
         action_quit.connect_activate(clone!(

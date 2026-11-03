@@ -81,6 +81,7 @@ rnote_ui_sources = files(
     'settingspanel/penshortcutrow.rs',
     'sidebar.rs',
     'strokecontentpaintable.rs',
+    'theme.rs',
     'strokecontentpreview.rs',
     'strokewidthpicker/mod.rs',
     'strokewidthpicker/previewstyle.rs',

@@ -16,6 +16,10 @@ impl RnAppWindow {
             #[weak]
             app_settings,
             move |style_manager| {
+                // Themes force their own scheme, only remember the user's choice for the system theme
+                if crate::theme::current() != crate::theme::Theme::System {
+                    return;
+                }
                 let color_scheme = match style_manager.color_scheme() {
                     adw::ColorScheme::Default => String::from("default"),
                     adw::ColorScheme::ForceLight => String::from("force-light"),
@@ -427,6 +431,11 @@ impl RnAppWindow {
             let color_scheme = app_settings.string("color-scheme");
             self.app()
                 .activate_action("color-scheme", Some(&color_scheme.to_variant()));
+
+            // the theme is applied after the color scheme, as it may override it
+            let theme = app_settings.string("theme");
+            self.app()
+                .activate_action("theme", Some(&theme.to_variant()));
         }
 
         {

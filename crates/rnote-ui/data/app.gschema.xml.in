@@ -29,6 +29,23 @@
         Use the color scheme in the application's UI and in the text area.
       </description>
     </key>
+    <key name='theme' type='s'>
+      <choices>
+        <choice value="system" />
+        <choice value="violet" />
+        <choice value="violet-light" />
+        <choice value="catppuccin-mocha" />
+        <choice value="rose-pine" />
+        <choice value="nord" />
+        <choice value="gruvbox-dark" />
+        <choice value="paper" />
+      </choices>
+      <default>"violet"</default>
+      <summary>Theme</summary>
+      <description>
+        The UI theme. "violet" follows the Violet desktop wallpaper palette. "system" uses plain libadwaita and the color scheme setting.
+      </description>
+    </key>
     <key name="active-stroke-color" type="(dddd)">
       <default>(0.0, 0.0, 0.0, 1.0)</default>
       <summary>the active stroke color (default: black)</summary>
